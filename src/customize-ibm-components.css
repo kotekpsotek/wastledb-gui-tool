@@ -1,0 +1,7 @@
+.bx--text-input:focus, .bx--text-input:active {
+    outline: 2px solid var(--orange-hue) !important;
+}
+
+.bx--checkbox-label::before {
+    outline: 2px solid var(--orange-hue) !important;
+}

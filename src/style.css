@@ -1,0 +1,25 @@
+:root {
+  --orange-hue: rgb(255, 149, 0);
+  --green-hue: rgb(29, 202, 16);
+}
+
+* {
+  box-sizing: border-box;
+  padding: 0px;
+  margin: 0px;
+}
+
+body {
+  background-color: white;
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+}
+
+#connect-button {
+  background-color: var(--green-hue);
+}
+
+.bx--text-input__field-outer-wrapper {
+  min-height: 10px !important;
+}
