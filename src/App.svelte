@@ -2,7 +2,7 @@
   import { List } from "carbon-icons-svelte" // Icond
   import "carbon-components-svelte/css/g10.css"; // IBM G10 white theme
   import { TextInput, PasswordInput, Checkbox, Button } from "carbon-components-svelte"; // IBM Carbon components // Because: they are delightful
-    import { onMount } from "svelte";
+  import { onMount } from "svelte";
   let createEncryptedConnection = false;
   let heigthLs3 = 0;
 
@@ -12,9 +12,23 @@
     heigthLs3 = document.body.clientHeight - (titleLs + tablesLsTitle);
   });
 
+  // Data from inputs
+  type valueFromInputs = string | number;
+  let userPassword: valueFromInputs;
+  let inputPasswordAssign = (ev: Event) => {
+    userPassword = (ev.target as any).value as string;
+  }
+  let serverUrl: valueFromInputs;
+  let userName: valueFromInputs;
+  let databaseName: valueFromInputs;
+  let rsapublicKey: valueFromInputs;
+
   // Show and hide textInput field for RSA public key to encrypt connection
   function encryptedConnection() {
     createEncryptedConnection = !createEncryptedConnection;
+  }
+  function connectUser(ev: Event) {
+    console.log(serverUrl, userPassword, userName, databaseName, rsapublicKey)
   }
 </script>
 
@@ -50,7 +64,9 @@
         <p>Establish Connection</p>
       </div>
       <div class="server-url-cont input-cnt">
-        <TextInput placeholder="Server URL..."/>
+        <TextInput placeholder="Server URL..." on:input={ev => {
+          serverUrl = ev.detail
+        }}/>
       </div>
       <div class="user-inputs">
           <div class="authorization-data">
@@ -58,10 +74,12 @@
               <p>Authorization</p>
             </div>
             <div class="user-name-cont input-cnt">
-              <TextInput placeholder="User Name..."/>
+              <TextInput placeholder="User Name..." on:input={ev => {
+                userName = ev.detail
+              }}/>
             </div>
             <div class="user-password-cont input-cnt">
-              <PasswordInput id=password-input placeholder="User Password..."/>
+              <PasswordInput id=password-input placeholder="User Password..." on:input={inputPasswordAssign}/>
             </div>
           </div>
           <div class="optional">
@@ -69,19 +87,23 @@
               <p>Optional</p>
             </div>
             <div class="user-name-cont input-cnt">
-              <TextInput id="user-name" placeholder="Database Name..." color="rgb(0, 0, 0)"/>
+              <TextInput id="user-name" placeholder="Database Name..." color="rgb(0, 0, 0)" on:input={ev => {
+                databaseName = ev.detail
+              }}/>
             </div>
             <div class="encrypted-connection">
               <Checkbox labelText="Create Encrypted Connection" on:change={encryptedConnection}/>
               {#if createEncryptedConnection}
-                <TextInput placeholder="RSA Public Key..." labelText="Database RSA public key"/>
+                <TextInput placeholder="RSA Public Key..." labelText="Database RSA public key" on:input={ev => {
+                  rsapublicKey = ev.detail
+                }}/>
               {/if}
             </div>
           </div>
       </div>
     </div>
     <div class="buttons">
-        <Button id="connect-button" size="field">Connect</Button>
+        <Button id="connect-button" size="field" on:click={connectUser}>Connect</Button>
     </div>
   </div>
 </div>
@@ -95,8 +117,7 @@
   /* .Left stripe styles */
   .left-stripe {
     width: var(--width-left-stripe);
-    border-right: solid 3px var(--orange-hue);
-    background-color: rgb(203, 203, 203);
+    background-color: var(--orange-hue);
     display: flex;
     flex-direction: column;
     row-gap: 5px;
@@ -111,6 +132,11 @@
     padding-right: 5px;
   }
 
+  .left-stripe .title {
+    padding-bottom: 3px;
+    border-bottom: solid 1px white;
+  }
+
   .left-stripe .title p {
     font-size: 24px !important;
     color: white;
@@ -118,7 +144,7 @@
 
   .left-stripe .tables-title p {
     font-size: 20px;
-    color: var(--orange-hue);
+    color: var(--yellow-hue);
   }
 
   .left-stripe .connections-list {
@@ -148,12 +174,31 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    color: white;
+    border-right: solid 1px rgb(221, 219, 219);
+    margin-right: 5px;
+  }
+
+  .outcome:hover .num {
+    color: var(--orange-hue);
+    border-right-color: rgb(180, 180, 180);
+  }
+
+  .outcome .dbname {
+    color: white;
+  }
+
+  .outcome:hover .dbname {
     color: var(--orange-hue);
   }
 
   .outcome .date {
     font-size: 15px !important;
-    color: grey;
+    color: rgb(221, 219, 219);
+  }
+
+  .outcome:hover .date {
+    color: rgb(180, 180, 180);
   }
 
   /* Body Action styles */
@@ -178,6 +223,8 @@
     flex-direction: column;
     justify-content: space-between;
     row-gap: 5px;
+    border: solid 2px var(--orange-hue);
+    border-radius: 2px;
   }
 
   .establish-connection > .sl1 {

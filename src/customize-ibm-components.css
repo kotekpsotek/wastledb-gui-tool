@@ -5,3 +5,12 @@
 .bx--checkbox-label::before {
     outline: 2px solid var(--orange-hue) !important;
 }
+
+#connect-button:focus {
+    border-color: var(--orange-hue);
+    box-shadow: inset 0 0 0 1px var(--orange-hue), inset 0 0 0 2px #f4f4f4;
+}
+
+.user-password-cont .bx--btn.bx--text-input--password__visibility__toggle.bx--tooltip__trigger:focus {
+    outline: 2px solid var(--orange-hue) !important;
+}
