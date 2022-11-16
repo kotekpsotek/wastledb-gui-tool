@@ -1,9 +1,10 @@
 <script lang="ts">
   import { List } from "carbon-icons-svelte" // Icond
   import "carbon-components-svelte/css/g10.css"; // IBM G10 white theme
-  import { TextInput, PasswordInput, Checkbox, Button } from "carbon-components-svelte"; // IBM Carbon components // Because: they are delightful
+  import { TextInput, PasswordInput, Checkbox, Button, ToastNotification } from "carbon-components-svelte"; // IBM Carbon components // Because: they are delightful
   import { onMount } from "svelte";
-  let createEncryptedConnection = false;
+  import { fly, scale } from "svelte/transition"
+  import { emit, listen } from "@tauri-apps/api/event";
   let heigthLs3 = 0;
 
   onMount(() => {
@@ -12,25 +13,141 @@
     heigthLs3 = document.body.clientHeight - (titleLs + tablesLsTitle);
   });
 
-  // Data from inputs
+  // store data for establish connection with database
   type valueFromInputs = string | number;
-  let userPassword: valueFromInputs;
-  let inputPasswordAssign = (ev: Event) => {
-    userPassword = (ev.target as any).value as string;
-  }
-  let serverUrl: valueFromInputs;
-  let userName: valueFromInputs;
-  let databaseName: valueFromInputs;
-  let rsapublicKey: valueFromInputs;
+  interface connectObjType {
+    serverUrl: valueFromInputs,
+    userName: valueFromInputs,
+    userPassword: valueFromInputs,
+    databaseName: valueFromInputs,
+    createEncryptedConnection: boolean,
+    rsapublicKey: valueFromInputs
+  } 
 
+  // Store data for enable establish connection
+  const connectionObj: connectObjType = {
+    serverUrl: undefined,
+    userName: undefined,
+    userPassword: undefined,
+    databaseName: undefined,
+    createEncryptedConnection: false,
+    rsapublicKey: undefined,
+  }
+
+  // Data from inputs
+  let inputPasswordAssign = (ev: Event) => {
+    connectionObj.userPassword = (ev.target as any).value as string;
+  }
+
+  // Store data about inut state
+  const invalidInputsState = {
+    serverUrl: false,
+    userName: false,
+    databaseName: false,
+    userPassword: false,
+    rsapublicKey: false
+  }
+    // Not inside "invalidInputsState" due to svelte reactivity behaviour
+  function invalidInputsStateSetAll(incorrect: boolean, withoutSetForKey?: string[]) {
+    for (const keyName of Object.keys(invalidInputsState)) {
+      if (incorrect && !withoutSetForKey?.includes(keyName) && (keyName != "rsapublicKey" || keyName == "rsapublicKey" && connectionObj.createEncryptedConnection)) {
+        invalidInputsState[keyName] = true
+      }
+      else if (connectionObj[keyName] || (keyName == "rsapublicKey" && !connectionObj["rsapublicKey"] && !connectionObj["createEncryptedConnection"])) {
+        invalidInputsState[keyName] = false
+      }
+    }
+
+    for (const keyWthName of withoutSetForKey) {
+      invalidInputsState[keyWthName] = !incorrect
+    }
+  }
+  
   // Show and hide textInput field for RSA public key to encrypt connection
   function encryptedConnection() {
-    createEncryptedConnection = !createEncryptedConnection;
+    connectionObj.createEncryptedConnection = !connectionObj.createEncryptedConnection;
+
+    if (!connectionObj.createEncryptedConnection) connectionObj.rsapublicKey = undefined;
   }
-  function connectUser(ev: Event) {
-    console.log(serverUrl, userPassword, userName, databaseName, rsapublicKey)
+  // After click on "Connect" button GUI client will be try establish connection with database
+  async function connectUser(ev: Event) {
+    const { serverUrl, userName, userPassword, createEncryptedConnection, rsapublicKey } = connectionObj;
+    
+    if (serverUrl && userName && userPassword && (!createEncryptedConnection || (createEncryptedConnection && rsapublicKey))) {
+      await emit("establish-connection", connectionObj)
+    }
+    else {
+      // When required data isn't entered
+      const notFor = [];
+      createEncryptedConnection && rsapublicKey ? notFor.push("rsapublicKey") : null;
+
+      invalidInputsStateSetAll(true, notFor)
+    }
+  }
+
+  // Listen events from backend
+  const notification: [boolean, string, boolean] = [false, "", false]; // 0. show(true)/close(false), 1. Notification reason, Notification type: success(true)/error(false)
+  listen("couldnt-establish-connection", ev => {
+    // Couldnt establish connection
+    const { payload } = ev;
+    switch (payload) {
+      case "you must attach login options":
+        notification[0] = true;
+        notification[1] = "You must provide correct data for these fields if you want to establish connection";
+        invalidInputsStateSetAll(true);
+      break;
+
+      case "connection url is incorrect":
+        notification[0] = true;
+        notification[1] = "You must give correct format of url. Example: wastledb://127.0.0.1:27000/database_name";
+        invalidInputsStateSetAll(true, ["userName", "userPassword", "databaseName", "rsapublicKey"]);
+      break;
+
+      case "couldnt connect with dbs":
+        notification[0] = true;
+        notification[1] = "Couldn't connect with database maybe IP adress is in incorrect format or you pass bad address. Adequate URL should look similar to: wastledb://127.0.0.1:27000/database_name";
+        invalidInputsStateSetAll(true, ["userName", "userPassword", "databaseName", "rsapublicKey"]);
+      break;
+
+      case "unsupported response":
+        notification[0] = true;
+        notification[1] = "Recived response which couldn't be handled!";
+        invalidInputsStateSetAll(true, ["userName", "userPassword", "databaseName", "rsapublicKey"]);
+      break;
+
+      case "incorrect login":
+        notification[0] = true;
+        notification[1] = "You pass incorrect login data (password or user name)";
+        invalidInputsStateSetAll(true, ["serverUrl", "rsapublicKey", "databaseName"]);
+      break;
+
+      default:
+        notification[0] = true;
+        if ((payload as string)?.includes("couldn't connect from this reason")) {
+          const reason = (payload as string).split(":")[1];
+          notification[1] = "Couldn't grow connection from reason: " + reason;
+        }
+    }
+  });
+
+  listen("connection-acquired", ev => {
+    // Connection established
+    notification[0] = true;
+    notification[1] = "Established connection with database";
+    notification[2] = true;
+    invalidInputsStateSetAll(false);
+  });
+
+  function notificationContent(): string {
+    return notification[1] ? notification[1] : ("Incorrect login data try again..." as any) as string
   }
 </script>
+
+{#if notification[0]}
+  <div class="notification" in:fly={{ duration: 200, x: 300 }} out:scale={{ duration: 200 }}>
+    <ToastNotification lowContrast={true} timeout={10_000} title="Error" caption={new Date().toLocaleTimeString("pl-PL")} subtitle={notificationContent()} kind={notification[2] ? "success" : "error"} on:close={ev => {notification[0] = false; (notification[2] ? notification[2] = false : null)}}/>
+  </div>
+{/if}
 
 <div class="left-stripe">
   <div class="title">
@@ -64,9 +181,14 @@
         <p>Establish Connection</p>
       </div>
       <div class="server-url-cont input-cnt">
-        <TextInput placeholder="Server URL..." on:input={ev => {
-          serverUrl = ev.detail
-        }}/>
+        <TextInput placeholder="Server URL..." 
+          on:input={
+            ev => {
+              connectionObj.serverUrl = ev.detail
+            }
+          } 
+          invalid={invalidInputsState.serverUrl}
+        />
       </div>
       <div class="user-inputs">
           <div class="authorization-data">
@@ -74,12 +196,20 @@
               <p>Authorization</p>
             </div>
             <div class="user-name-cont input-cnt">
-              <TextInput placeholder="User Name..." on:input={ev => {
-                userName = ev.detail
-              }}/>
+              <TextInput placeholder="User Name..." 
+                on:input={
+                  ev => {
+                    connectionObj.userName = ev.detail
+                  }
+                }
+                invalid={invalidInputsState.userName}
+              />
             </div>
             <div class="user-password-cont input-cnt">
-              <PasswordInput id=password-input placeholder="User Password..." on:input={inputPasswordAssign}/>
+              <PasswordInput id=password-input placeholder="User Password..." 
+                on:input={inputPasswordAssign}
+                invalid={invalidInputsState.userPassword}  
+              />
             </div>
           </div>
           <div class="optional">
@@ -87,16 +217,26 @@
               <p>Optional</p>
             </div>
             <div class="user-name-cont input-cnt">
-              <TextInput id="user-name" placeholder="Database Name..." color="rgb(0, 0, 0)" on:input={ev => {
-                databaseName = ev.detail
-              }}/>
+              <TextInput id="user-name" placeholder="Database Name..." color="rgb(0, 0, 0)"   
+                on:input={
+                  ev => {
+                    connectionObj.databaseName = ev.detail
+                  }
+                }
+                invalid={invalidInputsState.databaseName}
+              />
             </div>
             <div class="encrypted-connection">
               <Checkbox labelText="Create Encrypted Connection" on:change={encryptedConnection}/>
-              {#if createEncryptedConnection}
-                <TextInput placeholder="RSA Public Key..." labelText="Database RSA public key" on:input={ev => {
-                  rsapublicKey = ev.detail
-                }}/>
+              {#if connectionObj.createEncryptedConnection}
+                <TextInput placeholder="RSA Public Key..." labelText="Database RSA public key" 
+                  on:input={
+                    ev => {
+                      connectionObj.rsapublicKey = ev.detail
+                    }
+                  }
+                  invalid={invalidInputsState.rsapublicKey}
+                />
               {/if}
             </div>
           </div>
@@ -112,6 +252,13 @@
   :root {
     --width-left-stripe: 350px;
     --width-body-action: calc(100vw - var(var(--width-left-stripe)));
+  }
+
+  /* notification */
+  .notification {
+    position: absolute;
+    top: 10px;
+    right: 10px;
   }
 
   /* .Left stripe styles */

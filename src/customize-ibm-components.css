@@ -14,3 +14,7 @@
 .user-password-cont .bx--btn.bx--text-input--password__visibility__toggle.bx--tooltip__trigger:focus {
     outline: 2px solid var(--orange-hue) !important;
 }
+
+.notification > .bx--toast-notification {
+    width: 28rem;
+}

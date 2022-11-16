@@ -1,0 +1,21 @@
+Establish connection panel:
+    Events Listeners:
+        "couldnt-establish-connection" - emitted when couldnt establish connection with database. 
+            Recived params:
+                reason - In String form not object. string reason or null when reason hadn't been attached
+        "connection-acquired" - emitted when connection has been growed.
+            Recived params:
+                Nothing!!!
+    
+    Event emitters:
+        "establish-connections" - emitted after click on "Connect" button in aim to establish connection between client and dbs,
+            Sended params:
+                serverUrl - connection url,
+                userName - user login,
+                userPassword - user password,
+                createEncryptedConnection - boolean which adequate state which suggest whether "create encrypted connection"
+                rsapublicKey - when user would like to have got encrypted connection RSA public key from DBS RSA PKI key pair must be attached here. (Public key is used to decrypt AES-256-GCM Secret Key and Nonce recived from DBS durning establishing connection and encrypt Nonce each time durning send request to DBS)
+
+    Requirements:
+        Connection URL shema:
+            wastledb://ip:port/databasename ("databasename" is optional)

@@ -1,0 +1,4 @@
+What gui should contains:
+
+1. Connections list and input to connect to specific database,
+2. 
