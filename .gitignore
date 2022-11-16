@@ -11,6 +11,11 @@ node_modules
 dist
 dist-ssr
 *.local
+package.json
+package-lock.json
+
+# App domain settings
+src-tauri/recentConnectionsList.json
 
 # Editor directories and files
 .vscode/*

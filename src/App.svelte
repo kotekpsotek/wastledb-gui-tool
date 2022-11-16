@@ -5,12 +5,21 @@
   import { onMount } from "svelte";
   import { fly, scale } from "svelte/transition"
   import { emit, listen } from "@tauri-apps/api/event";
+  import ConnectionsList from "./lib/ts/connectionsList";
+  import { connectionsStore } from "./lib/ts/storages";
   let heigthLs3 = 0;
 
-  onMount(() => {
+  // When program has been loaded
+  onMount(async () => {
     const titleLs = document.querySelector(".left-stripe > .title").clientHeight;
     const tablesLsTitle = document.querySelector(".left-stripe > .tables-title").clientHeight;
     heigthLs3 = document.body.clientHeight - (titleLs + tablesLsTitle);
+
+    let readyFc = await ConnectionsList.readConnections();
+    // Set connections from file to storage with connections list
+    connectionsStore.update(value => {
+      return value = readyFc.connections;
+    });
   });
 
   // store data for establish connection with database
@@ -58,8 +67,10 @@
       }
     }
 
-    for (const keyWthName of withoutSetForKey) {
-      invalidInputsState[keyWthName] = !incorrect
+    if (withoutSetForKey) {
+      for (const keyWthName of withoutSetForKey) {
+        invalidInputsState[keyWthName] = !incorrect
+      }
     }
   }
   
@@ -130,12 +141,16 @@
     }
   });
 
-  listen("connection-acquired", ev => {
+  listen("connection-acquired", async ev => {
     // Connection established
     notification[0] = true;
     notification[1] = "Established connection with database";
     notification[2] = true;
     invalidInputsStateSetAll(false);
+
+    // Save connection on file with connections list
+    const connectionObj1= (connectionObj as unknown) as { [id: string]: string };
+    ConnectionsList.saveConnection(connectionObj1.serverUrl, connectionObj1.userName, connectionObj1.databaseName, connectionObj1.rsapublicKey)
   });
 
   function notificationContent(): string {
@@ -158,19 +173,21 @@
     <p>Tables</p>
   </div>
   <div class="connections-list" style={`height: ${heigthLs3}px;`}>
-    <div class="outcome">
-      <div class="num">
-        1
-      </div>
-      <div class="text">
-        <div class="dbname">
-          <p>Database name</p>
+    {#each $connectionsStore as connection, id}
+      <div class="outcome">
+        <div class="num">
+          {id + 1}
         </div>
-        <div class="date">
-          {new Date().toLocaleDateString("pl-PL")}
+        <div class="text">
+          <div class="dbname">
+            <p>{connection.connectionUrl}</p>
+          </div>
+          <div class="date">
+            {`${new Date(connection.dateTimestamp).toLocaleDateString("pl-PL")} ${new Date(connection.dateTimestamp).toLocaleTimeString("pl-PL")}`}
+          </div>
         </div>
       </div>
-    </div>
+    {/each}
   </div>
 </div>
 
@@ -326,6 +343,10 @@
     margin-right: 5px;
   }
 
+  .outcome .text {
+    width: calc(100% - 35px);
+  }
+
   .outcome:hover .num {
     color: var(--orange-hue);
     border-right-color: rgb(180, 180, 180);
@@ -333,6 +354,12 @@
 
   .outcome .dbname {
     color: white;
+  }
+
+  .dbname p {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
   }
 
   .outcome:hover .dbname {
