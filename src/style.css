@@ -3,6 +3,7 @@
   --orange-hue-filter: invert(53%) sepia(56%) saturate(1839%) hue-rotate(3deg) brightness(109%) contrast(102%);
   --yellow-hue: #ffff56cb;
   --green-hue: rgb(29, 202, 16);
+  --white-background: rgb(203, 203, 203);
 }
 
 * {
@@ -24,4 +25,8 @@ body {
 
 .bx--text-input__field-outer-wrapper {
   min-height: 10px !important;
+}
+
+#sql-input-linter {
+  width: 350px;
 }

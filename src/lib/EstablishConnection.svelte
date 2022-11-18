@@ -233,7 +233,7 @@
         padding-right: 10px;
         width: 750px;
         height: 350px;
-        background-color: rgb(203, 203, 203);
+        background-color: var(--white-background);
         box-shadow: 0px 0px 10px rgb(203, 203, 203);
         display: flex;
         flex-direction: column;

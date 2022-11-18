@@ -23,3 +23,24 @@
 .table-outcome:hover .tbl-icon svg {
     filter: var(--orange-hue-filter);
 }
+
+#sql-execute-button.bx--btn--tertiary {
+  border-color: var(--orange-hue) !important;
+  color: var(--orange-hue) !important;
+  border-right: none;
+}
+
+#sql-input-linter {
+    border-left: solid 1px var(--orange-hue);
+}
+
+#sql-execute-button.bx--btn--tertiary:hover {
+  background-color: var(--orange-hue);
+  color: white !important;
+}
+
+#sql-execute-button:focus {
+    background-color: var(--orange-hue);
+    color: white !important;
+    box-shadow: inset 0 0 0 1px var(--orange-hue), inset 0 0 0 2px #f4f4f4;
+}
