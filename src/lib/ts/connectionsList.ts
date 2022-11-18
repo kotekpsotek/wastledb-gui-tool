@@ -1,5 +1,5 @@
 import { readTextFile, writeFile, readDir, createDir, exists } from "@tauri-apps/api/fs";
-import { BaseDirectory } from "@tauri-apps/api/path"
+// import { BaseDirectory } from "@tauri-apps/api/path"
 import { v4 } from "uuid";
 import { connectionsStore } from "./storages";
 
@@ -46,7 +46,6 @@ export default class connectionListOpeartions {
         // Read file content and parse
         if (await exists(connectionListOpeartions.fileName)) {
             const fileContent = await readTextFile(connectionListOpeartions.fileName);
-            console.log(fileContent)
             const readyFcPre = fileContent.length ? JSON.parse(fileContent) : { connections: [] };
             const readyFc: connectionsList = "connections" in readyFcPre ? readyFcPre : { connections: [] }
     

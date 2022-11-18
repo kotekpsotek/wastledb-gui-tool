@@ -2,7 +2,7 @@
     import { TextInput, PasswordInput, Checkbox, Button } from "carbon-components-svelte"; // IBM Carbon components // Because: they are delightful
     import { emit, listen } from "@tauri-apps/api/event";
     import ConnectionsList from "./ts/connectionsList";
-    import { notificationStateStore as notification } from "./ts/storages";
+    import { notificationStateStore as notification, connectedToDatabaseName } from "./ts/storages";
 
       // store data for establish connection with database
     type valueFromInputs = string | number;
@@ -132,8 +132,25 @@
         invalidInputsStateSetAll(false);
 
         // Save connection on file with connections list
-        const connectionObj1= (connectionObj as unknown) as { [id: string]: string };
+        const connectionObj1 = (connectionObj as unknown) as { [id: string]: string };
         ConnectionsList.saveConnection(connectionObj1.serverUrl, connectionObj1.userName, connectionObj1.databaseName, connectionObj1.rsapublicKey)
+    
+        // 
+        const ipcResponse: { connected_with_database: boolean, database_name: string } | null = ev.payload ? JSON.parse(ev.payload as string) : null;
+        if (ipcResponse) {
+            switch(ipcResponse.connected_with_database) {
+                case true:
+                    // Show tables from connected database
+                    await emit("show-tables");
+                    $connectedToDatabaseName = ipcResponse.database_name; // assign database name
+                break;
+
+                case false:
+                    // Show databases list from dbs
+                    await emit("show-databases");
+                break;
+            }
+        }
     });
 </script>
 

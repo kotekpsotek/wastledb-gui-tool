@@ -18,3 +18,8 @@
 .notification > .bx--toast-notification {
     width: 28rem;
 }
+
+    /* table icon when table canvas is hovering */
+.table-outcome:hover .tbl-icon svg {
+    filter: var(--orange-hue-filter);
+}

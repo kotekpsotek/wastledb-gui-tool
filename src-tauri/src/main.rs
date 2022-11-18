@@ -7,7 +7,7 @@ mod payloads;
 
 use tauri::Manager;
 use payloads::EstablishConnection;
-use serde_json;
+use serde_json::{ self, json };
 use std::{
     sync::{Arc, Mutex},
     net::TcpStream, io::{Write, Read}
@@ -21,11 +21,14 @@ fn greet(name: &str) -> String {
 
 fn event_listeners(app: &mut tauri::App) {
     let app_handler = Arc::new(app.handle());
+    let server_url = Arc::new(Mutex::new(String::new()));
     let session_id_storage = Arc::new(Mutex::new(String::new()));
 
+    // Establish connection with dbs (Calling always as 1 event in event tree)
     app.listen_global("establish-connection", {
-        let app_handler = Arc::clone(&app_handler);
+        let app_handler = Arc::clone(&app_handler); // server ip address without "database" and protocol name so i.e: 127.0.0.1:20050
         let session_id_storage = Arc::clone(&session_id_storage);
+        let server_url_storage = server_url.clone();
         move |event| {
             let EstablishConnection { server_url, user_name, user_password, db_name, create_encrypted_connection, rsapublic_key } = serde_json::from_str::<EstablishConnection>(event.payload().unwrap()).expect("Couldn't deserialize message");
 
@@ -45,6 +48,10 @@ fn event_listeners(app: &mut tauri::App) {
                     
                     match TcpStream::connect(url_address[0]) {
                         Ok(mut stream) => {
+                            // Assign address to dbs after successfull captured connection
+                            *server_url_storage.lock().unwrap() = url_address[0].to_string();
+
+                            // ...
                             let database_name = if url_address.len() > 1 {
                                 Some(url_address[1])
                             }
@@ -77,7 +84,16 @@ fn event_listeners(app: &mut tauri::App) {
                                         *session_id_storage.lock().unwrap() = session_id.to_string(); // save session into session "global storage"
 
                                         // Everything is ok
-                                        app_handler.emit_all::<Option<String>>("connection-acquired", None).expect("Couldn't emit event")
+                                        // TODO: Whether user is connected to database must be attached in dbs response because also it is a little likely to attached database doesn't exists
+                                        let connected_with_database = {
+                                            if database_name.is_some() { // indicate frontend whether it is now connected with database to afford to call as next adequate events
+                                                true
+                                            }
+                                            else {
+                                                false
+                                            }
+                                        };
+                                        app_handler.emit_all::<Option<String>>("connection-acquired", Some(json!({ "connected_with_database": connected_with_database, "database_name": database_name }).to_string())).expect("Couldn't emit event")
                                     },
                                     "err" => {
                                         // Error recived
@@ -108,6 +124,41 @@ fn event_listeners(app: &mut tauri::App) {
             else {
                 app_handler.emit_all("couldnt-establish-connection", "you must attach login options")
                     .expect("Couldn't emit event");
+            }
+        }
+    });
+
+    // Listen to show user tables list
+    app.listen_global("show-tables", {
+        let app_handler = app_handler.clone();
+        let session_id_storage = session_id_storage.clone();
+        let server_url_storage = server_url.clone();
+        move |_| {
+            let session_id = session_id_storage
+                .lock()
+                .unwrap()
+                .to_owned();
+
+            let command = format!("Show;what|x=x|database_tables 1-1 unit_name|x=x|none 1-1 session_id|x=x|{}", session_id);
+
+            // Connection
+            let mut tcp = TcpStream::connect(server_url_storage.lock().unwrap().to_owned()).expect("Couldn't establish connection with dbs"); 
+                // ...Request
+            tcp.write(command.as_bytes()).expect("Couldn't send request");
+                // ...Response
+            let response_bytes: &mut [u8; 1024 * 16] = &mut [0; 16384];
+            tcp.read(response_bytes).expect("Couldn't read response");
+            let response_string = String::from_utf8(response_bytes.to_vec()).expect("Couldn't convert response to UTF-8 string").replace("\0", "");
+            let resp_s = response_string.split(";").collect::<Vec<_>>();
+
+            // Rebound to frontend
+            if resp_s[0].to_lowercase() == "ok" {
+                // Send tables to frontend
+                app_handler.emit_all("show-tables-res", resp_s[1]).expect("Couldn't emit event"); // Send to frontend JSON object recived from database
+            }
+            else {
+                // Emitt that error
+                app_handler.emit_all("error", "Couldn't achive tables list from dbs").expect("Couldn't emit event");
             }
         }
     });

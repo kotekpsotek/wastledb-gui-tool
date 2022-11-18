@@ -5,8 +5,21 @@ Establish connection panel:
                 reason - In String form not object. string reason or null when reason hadn't been attached
         "connection-acquired" - emitted when connection has been growed.
             Recived params:
-                Nothing!!!
+                connected_with_database=boolean - when true that means that user will see tables list from database to whcih he/she is connected, contrary when "false" user will see list databases from dbs
     
+        "show-tables-res" - listened after emit event "show-tables" when all things went adequate
+            Recived params:
+                JSON object looking same as: { "tables": ["table_name1", "table_name2"] } (or empty table)
+
+        "show-databases-res" - listened after emit event "show-databases" when all things went such as planed
+            Recived params:
+                JSON object looking same as: { databases: ["database_name1", "database_name2"] } (or empty list when dbs hasn't got saved any databases)
+
+        "error" - listened after found error on backend site:
+            TODO: !
+            Recived params:
+                reason - error reason in string format
+
     Event emitters:
         "establish-connections" - emitted after click on "Connect" button in aim to establish connection between client and dbs,
             Sended params:
@@ -15,6 +28,14 @@ Establish connection panel:
                 userPassword - user password,
                 createEncryptedConnection - boolean which adequate state which suggest whether "create encrypted connection"
                 rsapublicKey - when user would like to have got encrypted connection RSA public key from DBS RSA PKI key pair must be attached here. (Public key is used to decrypt AES-256-GCM Secret Key and Nonce recived from DBS durning establishing connection and encrypt Nonce each time durning send request to DBS)
+
+        "show-tables" - start action reciving list with tables of database to which user is connected
+            Sended params:
+                Nothing!!!
+
+        "show-databases" - start action showing databases saved on dbs. Emitted among others when user is not connected do specific database
+            Sended params:
+                Nothing!!!
 
     Requirements:
         Connection URL shema:
