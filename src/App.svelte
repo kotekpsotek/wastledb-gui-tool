@@ -88,6 +88,7 @@
     display: flex;
     flex-direction: column;
     row-gap: 5px;
+    border-right: solid 3px var(--white-background);
   }
 
   /* Body Action styles */

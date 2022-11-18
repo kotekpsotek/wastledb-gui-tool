@@ -87,7 +87,7 @@
 
     .title {
       padding-bottom: 3px;
-      border-bottom: solid 1px white;
+      border-bottom: solid 1px var(--darker-white-on-orange);
     }
 
     .left-stripe .title p {
@@ -97,7 +97,7 @@
 
     .left-stripe .tables-title p {
       font-size: 20px;
-      color: var(--yellow-hue);
+      color: var(--darker-white-on-orange);
     }
 
     .connections-list {

@@ -4,6 +4,7 @@
   --yellow-hue: #ffff56cb;
   --green-hue: rgb(29, 202, 16);
   --white-background: rgb(203, 203, 203);
+  --darker-white-on-orange: #f4f4f4e3;
 }
 
 * {
