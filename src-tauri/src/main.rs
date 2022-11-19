@@ -10,7 +10,8 @@ use payloads::EstablishConnection;
 use serde_json::{ self, json };
 use std::{
     sync::{Arc, Mutex},
-    net::TcpStream, io::{Write, Read}
+    net::TcpStream, io::{Write, Read},
+    thread
 };
 
 // Learn more about Tauri commands at https://tauri.app/v1/guides/features/command
@@ -23,6 +24,66 @@ fn event_listeners(app: &mut tauri::App) {
     let app_handler = Arc::new(app.handle());
     let server_url = Arc::new(Mutex::new(String::new()));
     let session_id_storage = Arc::new(Mutex::new(String::new()));
+
+    // Call keep-alice command from time to time // Call Keep-Alive when user has been login for every 10 seconds
+    // Spawn new not-blocking thread
+    thread::spawn({
+        let session_id = session_id_storage.clone();
+        let server_url = server_url.clone();
+        let app_handler = app_handler.clone();
+        
+        move || {
+            loop {
+                let session_id = session_id.lock().unwrap().to_owned();
+                
+                thread::sleep(std::time::Duration::from_secs(10));
+
+                if session_id.len() > 0 {
+                    match TcpStream::connect(server_url.lock().unwrap().to_owned()) {
+                        Ok(mut stream) => {
+                            // Request
+                            let command = format!("Keep-Alive;{}", session_id);
+                            stream.write(command.as_bytes()).expect("Couldn't call Keep-Alive command");
+
+                            // Response
+                            let buf: &mut [u8; 1024 * 16] = &mut [0;16384];
+                            match stream.read(buf) {
+                                Ok(_) => {
+                                    let resp_str = String::from_utf8(buf.to_vec())
+                                        .expect("Couldn't convert response to UTF-8 string")
+                                        .replace("\0", "");
+    
+                                    // Process response
+                                    let resp_str_sli = resp_str.split(";")
+                                        .collect::<Vec<_>>();
+                                    
+                                    match resp_str_sli[0].to_lowercase().as_str() {
+                                        "ok" => (),
+                                        "err" => {
+                                            // Emit error to client when error has been detected
+                                            let reason_err = {
+                                                if resp_str_sli.len() > 1 {
+                                                    resp_str_sli[1]
+                                                }
+                                                else {
+                                                    "Couldn't update session live-time"
+                                                }
+                                            };
+                                            app_handler.emit_all("error", reason_err)
+                                                .expect("Couldn't emit event");
+                                        },
+                                        _ => ()
+                                    }
+                                },
+                                Err(_) => ()
+                            };
+                        },
+                        Err(_) => ()
+                    };
+                }
+            }
+        }
+    });
 
     // Establish connection with dbs (Calling always as 1 event in event tree)
     app.listen_global("establish-connection", {
@@ -213,7 +274,6 @@ fn event_listeners(app: &mut tauri::App) {
                     .lock()
                     .unwrap()
                     .to_owned();
-                println!("{}", database_name);
 
                 let command = format!("DatabaseConnect;database_name|x=x|{} 1-1 session_id|x=x|{}", database_name, session_id);
 
