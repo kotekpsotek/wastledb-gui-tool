@@ -199,6 +199,55 @@ fn event_listeners(app: &mut tauri::App) {
             }
         }
     });
+
+    app.listen_global("connect-to-database", {
+        let app_handler = app_handler.clone();
+        let session_id_storage = session_id_storage.clone();
+        let server_url_storage = server_url.clone();
+
+        move |event| {
+            let database_name = event.payload().unwrap().replace("\"", "");
+
+            if database_name.len() > 0 {
+                let session_id = session_id_storage
+                    .lock()
+                    .unwrap()
+                    .to_owned();
+                println!("{}", database_name);
+
+                let command = format!("DatabaseConnect;database_name|x=x|{} 1-1 session_id|x=x|{}", database_name, session_id);
+
+                // Connection
+                let mut tcp = TcpStream::connect(server_url_storage.lock().unwrap().to_owned()).expect("Couldn't establish connection with dbs"); 
+                    // ...Request
+                tcp.write(command.as_bytes()).expect("Couldn't send request");
+                    // ...Response
+                let response_bytes: &mut [u8; 1024 * 16] = &mut [0; 16384];
+                tcp.read(response_bytes).expect("Couldn't read response");
+                let response_string = String::from_utf8(response_bytes.to_vec()).expect("Couldn't convert response to UTF-8 string").replace("\0", "");
+                let resp_s = response_string.split(";").collect::<Vec<_>>(); // When "OK" then 2 key isn't presented, When "Err" second key can be Reason but also cannot exists
+
+                if resp_s[0].to_lowercase() == "ok" {
+                    // Send that user is connected with database
+                    app_handler.emit_all::<String>("connected-to-database", database_name).expect("Couldn't emit event"); // Send to frontend JSON object recived from database
+                }
+                else {
+                    // Emitt error
+                    let error_mes = {
+                        if resp_s.len() > 1 {
+                            // Reason from server
+                            resp_s[1]
+                        }
+                        else {
+                            // Default reason
+                            "Couldn't change connection database"
+                        }
+                    };
+                    app_handler.emit_all("error", error_mes).expect("Couldn't emit event");
+                }
+            }
+        }
+    });
 }
 
 fn main() {

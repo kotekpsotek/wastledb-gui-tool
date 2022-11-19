@@ -5,7 +5,7 @@
   import { fly, scale } from "svelte/transition";
   import { emit, listen } from "@tauri-apps/api/event";
   import ConnectionsList from "./lib/ts/connectionsList";
-  import { connectionsStore, displayingState, notificationStateStore as notification, databaseTablesList, dbsDatabasesList } from "./lib/ts/storages";
+  import { connectionsStore, displayingState, notificationStateStore as notification, databaseTablesList, dbsDatabasesList, connectedToDatabaseName, selectedTableName } from "./lib/ts/storages";
   import LeftStripeContent from "./lib/LeftStripeContent.svelte";
   import EstablishConnection from "./lib/EstablishConnection.svelte";
   import SelectedTable from "./lib/SelectedTable.svelte";
@@ -28,9 +28,7 @@
 
   listen("show-tables-res", ev => {
     // Show dbs tables
-    console.log("tables achived!")
     const { tables } = JSON.parse(ev.payload as string) as { tables: string[] }; // parse recived payload and extract "tables" by destructurization
-    console.log(tables)
     $displayingState = "table_list";
     $databaseTablesList = tables;
   });
@@ -42,10 +40,17 @@
     $dbsDatabasesList = databases;
   });
 
+  listen("connected-to-database", async ev => {
+    // Change database to which user is connected and display database tables
+    $connectedToDatabaseName = ev.payload as string; // under payload is database name in raw string format
+    $selectedTableName = undefined; // unsellect from displaying table/s from another database
+    await emit("show-tables"); // request for new connected database-name tables
+  });
+
   listen("error", ev => {
     const reason = ev.payload as string;
     $notification = [true, reason || "Error detected", false];
-  })
+  });
 </script>
 
 {#if $notification[0]}

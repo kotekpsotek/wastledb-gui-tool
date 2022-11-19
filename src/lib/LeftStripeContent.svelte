@@ -20,6 +20,11 @@
       $selectedTableName = clickedTableName
     }
 
+    async function userChooseDatabase(ev: Event) {
+      const databaseName = (ev.currentTarget as HTMLElement).querySelector(".database-name p").textContent;
+      await emit("connect-to-database", databaseName);
+    }
+
     afterUpdate(() => {
       // After click on database name show all databases names "go back to it" - because point from which it is emitted is further
       document.getElementById("choosed-database-name")?.addEventListener("click", async ev => {
@@ -68,27 +73,39 @@
           </div>
         {/each}
     {:else if $displayingState == "table_list"}
-      {#each $databaseTablesList as table}
-        <button class="table-outcome" on:click={userChooseTable}>
-          <div class="tbl-icon">
-            <Table size={16} color="white" id="icon-src"/>
+      {#if $databaseTablesList.length}
+        {#each $databaseTablesList as table}
+          <button class="table-outcome" on:click={userChooseTable}>
+            <div class="tbl-icon">
+              <Table size={16} color="white" id="icon-src"/>
+            </div>
+            <div class="table-name">
+              <p>{table}</p>
+            </div>
+          </button>
+        {/each}
+      {:else}
+          <div class="no-tables">
+            <p>Database hasn't got any tables</p>
           </div>
-          <div class="table-name">
-            <p>{table}</p>
-          </div>
-        </button>
-      {/each}
+      {/if}
     {:else if $displayingState == "databases_list"}
-      {#each $dbsDatabasesList as database}
-        <button class="database-outcome">
-          <div class="db-icon">
-            <Datastore size={16} color="white" id="icon-src"/>
-          </div>
-          <div class="database-name">
-            <p>{database}</p>
-          </div>
-        </button>
-      {/each}
+      {#if $dbsDatabasesList.length}
+        {#each $dbsDatabasesList as database}
+          <button class="database-outcome" on:click={userChooseDatabase}>
+            <div class="db-icon">
+              <Datastore size={16} color="white" id="icon-src"/>
+            </div>
+            <div class="database-name">
+              <p>{database}</p>
+            </div>
+          </button>
+        {/each}
+      {:else}
+        <div class="no-databases">
+          <p>Empty databases list</p>
+        </div>
+      {/if}
     {/if}
 </div>
 
@@ -98,6 +115,19 @@
       background-color: transparent;
       border: none;
       outline: none;
+    }
+
+    .no-databases, .no-tables {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+    }
+
+    .no-databases > p, .no-tables > p {
+      font-size: 15px !important;
     }
 
     .title, .tables-title {
