@@ -50,7 +50,7 @@
 
 {#if $notification[0]}
   <div class="notification" in:fly={{ duration: 200, x: 300 }} out:scale={{ duration: 200 }}>
-    <ToastNotification id="app-notification-toast" lowContrast={true} timeout={10_000} title="Error" caption={new Date().toLocaleTimeString("pl-PL")} subtitle={notificationContent()} kind={$notification[2] ? "success" : "error"} on:close={ev => {$notification[0] = false; ($notification[2] ? $notification[2] = false : null)}}/>
+    <ToastNotification id="app-notification-toast" lowContrast={true} timeout={10_000} title={$notification[2] ? "Success" : "Error"} caption={new Date().toLocaleTimeString("pl-PL")} subtitle={notificationContent()} kind={$notification[2] ? "success" : "error"} on:close={ev => {$notification[0] = false; ($notification[2] ? $notification[2] = false : null)}}/>
   </div>
 {/if}
 

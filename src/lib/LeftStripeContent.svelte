@@ -1,8 +1,8 @@
 <script lang="ts">
     import { List, DatabaseDatastax, Table, Datastore, Cube } from "carbon-icons-svelte" // Icon IBM Carbon
     import { connectionsStore } from "./ts/storages";
-    import { onMount } from "svelte";
-    import type { SupportedUITypes } from "./ts/storages"
+    import { onMount, afterUpdate } from "svelte";
+    import { emit } from "@tauri-apps/api/event";
     import { displayingState, connectedToDatabaseName, databaseTablesList, selectedTableName, dbsDatabasesList } from "./ts/storages";
 
     let heigthLs3 = 0;
@@ -19,6 +19,13 @@
       const clickedTableName = (ev.currentTarget as HTMLElement).querySelector(".table-name p").textContent.trim();
       $selectedTableName = clickedTableName
     }
+
+    afterUpdate(() => {
+      // After click on database name show all databases names "go back to it" - because point from which it is emitted is further
+      document.getElementById("choosed-database-name")?.addEventListener("click", async ev => {
+        await emit("show-databases");
+      });
+    });
 </script>
 
 <div class="title">
@@ -27,7 +34,7 @@
     <p>Recent Connections</p>
   {:else if $displayingState == "table_list"}
     <DatabaseDatastax size={24} class="list-icon" color="white"/>
-    <p title="Connected with database {$connectedToDatabaseName}">{$connectedToDatabaseName}</p>
+    <p title="Connected with database {$connectedToDatabaseName}" id="choosed-database-name">{$connectedToDatabaseName}</p>
   {:else if $displayingState == "databases_list"}
     <Cube size={24} class="list-icon" color="white"/>
     <p>Available databases</p>
@@ -105,6 +112,11 @@
     .title {
       padding-bottom: 3px;
       border-bottom: solid 1px var(--darker-white-on-orange);
+      cursor: pointer;
+    }
+
+    .title #choosed-database-name:hover {
+      text-decoration: underline solid white;
     }
 
     .left-stripe .title p {
