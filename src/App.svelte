@@ -8,7 +8,8 @@
   import { connectionsStore, displayingState, notificationStateStore as notification, databaseTablesList, dbsDatabasesList } from "./lib/ts/storages";
   import LeftStripeContent from "./lib/LeftStripeContent.svelte";
   import EstablishConnection from "./lib/EstablishConnection.svelte";
-  import SelectedTable from "./lib/SelectedTable.svelte"
+  import SelectedTable from "./lib/SelectedTable.svelte";
+  import NoSelectedDatabase from "./lib/noSelectedDatabase.svelte";
 
   // When program has been loaded
   onMount(async () => {
@@ -64,6 +65,8 @@
     <EstablishConnection/>
   {:else if $displayingState == "table_list"}
     <SelectedTable/>
+  {:else if $displayingState == "databases_list"}
+    <NoSelectedDatabase/>
   {/if}
 </div>
 

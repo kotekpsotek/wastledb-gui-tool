@@ -135,7 +135,7 @@
         const connectionObj1 = (connectionObj as unknown) as { [id: string]: string };
         ConnectionsList.saveConnection(connectionObj1.serverUrl, connectionObj1.userName, connectionObj1.databaseName, connectionObj1.rsapublicKey)
     
-        // 
+        // Read response and perform specific action rely on its content
         const ipcResponse: { connected_with_database: boolean, database_name: string } | null = ev.payload ? JSON.parse(ev.payload as string) : null;
         if (ipcResponse) {
             switch(ipcResponse.connected_with_database) {

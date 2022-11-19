@@ -1,9 +1,9 @@
 <script lang="ts">
-    import { List, DatabaseDatastax, Table } from "carbon-icons-svelte" // Icon IBM Carbon
+    import { List, DatabaseDatastax, Table, Datastore, Cube } from "carbon-icons-svelte" // Icon IBM Carbon
     import { connectionsStore } from "./ts/storages";
     import { onMount } from "svelte";
     import type { SupportedUITypes } from "./ts/storages"
-    import { displayingState, connectedToDatabaseName, databaseTablesList, selectedTableName } from "./ts/storages";
+    import { displayingState, connectedToDatabaseName, databaseTablesList, selectedTableName, dbsDatabasesList } from "./ts/storages";
 
     let heigthLs3 = 0;
     
@@ -28,6 +28,9 @@
   {:else if $displayingState == "table_list"}
     <DatabaseDatastax size={24} class="list-icon" color="white"/>
     <p title="Connected with database {$connectedToDatabaseName}">{$connectedToDatabaseName}</p>
+  {:else if $displayingState == "databases_list"}
+    <Cube size={24} class="list-icon" color="white"/>
+    <p>Available databases</p>
   {/if}
 </div>
 <div class="tables-title">
@@ -35,11 +38,14 @@
     <p>Connections List</p>
   {:else if $displayingState == "table_list"}
     <p>Tables</p>
+  {:else if $displayingState == "databases_list"}
+    <p>Databases</p>
   {/if}
 </div>
 <div class="connections-list" style={`height: ${heigthLs3}px;`}>
     {#if $displayingState == "es_connection"}
-        {#each $connectionsStore as connection, id}
+        <!-- Display connection in order: the newest connections are on top of list but older on the bottom -->
+        {#each $connectionsStore.reverse() as connection, id}
           <div class="connection-outcome">
             <div class="num">
               {id + 1}
@@ -62,6 +68,17 @@
           </div>
           <div class="table-name">
             <p>{table}</p>
+          </div>
+        </button>
+      {/each}
+    {:else if $displayingState == "databases_list"}
+      {#each $dbsDatabasesList as database}
+        <button class="database-outcome">
+          <div class="db-icon">
+            <Datastore size={16} color="white" id="icon-src"/>
+          </div>
+          <div class="database-name">
+            <p>{database}</p>
           </div>
         </button>
       {/each}
@@ -167,37 +184,37 @@
       color: rgb(180, 180, 180);
     }
 
-    .table-outcome {
+    .table-outcome, .database-outcome {
       height: 30px;
       display: flex;
       align-items: center;
       cursor: pointer;
     }
 
-    .table-outcome:hover {
+    .table-outcome:hover, .database-outcome:hover {
       background-color: white;
     }
 
-    .tbl-icon {
+    .tbl-icon, .db-icon {
       display: flex;
       justify-content: center;
       align-items: center;
       width: 15%;
     }
 
-    .table-name {
+    .table-name, .database-name {
       display: flex;
       width: calc(100% - 15%);
     }
 
-    .table-name p {
+    .table-name p, .database-name p {
       color: white;
       overflow: hidden;
       white-space: nowrap;
       text-overflow: ellipsis;
     }
 
-    .table-outcome:hover .table-name p {
+    .table-outcome:hover .table-name p, .database-outcome:hover .database-name p {
       color: var(--orange-hue);
     }
 </style>

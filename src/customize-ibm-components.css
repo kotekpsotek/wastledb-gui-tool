@@ -20,7 +20,7 @@
 }
 
     /* table icon when table canvas is hovering */
-.table-outcome:hover .tbl-icon svg {
+.table-outcome:hover .tbl-icon svg, .database-outcome:hover .db-icon svg {
     filter: var(--orange-hue-filter);
 }
 

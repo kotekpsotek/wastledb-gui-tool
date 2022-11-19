@@ -128,6 +128,7 @@ fn event_listeners(app: &mut tauri::App) {
         }
     });
 
+    // TODO: Renundant code below (Simplify that to one function)
     // Listen to show user tables list
     app.listen_global("show-tables", {
         let app_handler = app_handler.clone();
@@ -159,6 +160,42 @@ fn event_listeners(app: &mut tauri::App) {
             else {
                 // Emitt that error
                 app_handler.emit_all("error", "Couldn't achive tables list from dbs").expect("Couldn't emit event");
+            }
+        }
+    });
+
+    // Download from "dbs" and send to "frontend" databases list
+    app.listen_global("show-databases", {
+        let app_handler = app_handler.clone();
+        let session_id_storage = session_id_storage.clone();
+        let server_url_storage = server_url.clone();
+    
+        move |_| {
+            let session_id = session_id_storage
+                .lock()
+                .unwrap()
+                .to_owned();
+
+            let command = format!("Show;what|x=x|databases 1-1 unit_name|x=x|none 1-1 session_id|x=x|{}", session_id);
+
+            // Connection
+            let mut tcp = TcpStream::connect(server_url_storage.lock().unwrap().to_owned()).expect("Couldn't establish connection with dbs"); 
+                // ...Request
+            tcp.write(command.as_bytes()).expect("Couldn't send request");
+                // ...Response
+            let response_bytes: &mut [u8; 1024 * 16] = &mut [0; 16384];
+            tcp.read(response_bytes).expect("Couldn't read response");
+            let response_string = String::from_utf8(response_bytes.to_vec()).expect("Couldn't convert response to UTF-8 string").replace("\0", "");
+            let resp_s = response_string.split(";").collect::<Vec<_>>();
+
+            // Rebound to frontend
+            if resp_s[0].to_lowercase() == "ok" {
+                // Send databases to frontend
+                app_handler.emit_all("show-databases-res", resp_s[1]).expect("Couldn't emit event"); // Send to frontend JSON object recived from database
+            }
+            else {
+                // Emitt that error
+                app_handler.emit_all("error", "Couldn't achive list of databases from dbs").expect("Couldn't emit event");
             }
         }
     });
