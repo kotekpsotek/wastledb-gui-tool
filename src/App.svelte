@@ -5,7 +5,7 @@
   import { fly, scale } from "svelte/transition";
   import { emit, listen } from "@tauri-apps/api/event";
   import ConnectionsList from "./lib/ts/connectionsList";
-  import { connectionsStore, displayingState, notificationStateStore as notification, databaseTablesList, dbsDatabasesList, connectedToDatabaseName, selectedTableName, selectedTableContent } from "./lib/ts/storages";
+  import { connectionsStore, displayingState, notificationStateStore as notification, databaseTablesList, dbsDatabasesList, connectedToDatabaseName, selectedTableContent } from "./lib/ts/storages";
   import LeftStripeContent from "./lib/LeftStripeContent.svelte";
   import EstablishConnection from "./lib/EstablishConnection.svelte";
   import SelectedTable from "./lib/SelectedTable.svelte";
@@ -22,43 +22,56 @@
       return value = readyFc.connections;
     });
   });
-  
-  function notificationContent(): string {
-    return $notification[1] ? $notification[1] : ("Incorrect login data try again..." as any) as string
-  }
 
   listen("show-tables-res", ev => {
-    // Show dbs tables
-    const { tables } = JSON.parse(ev.payload as string) as { tables: string[] }; // parse recived payload and extract "tables" by destructurization
+    /* Show dbs tables */
+
+    // Parse recived payload and extract "tables" by destructurization
+    const { tables } = JSON.parse(ev.payload as string) as { tables: string[] };
+
+    // Change app state
     $displayingState = "table_list";
+
+    // Push tables list to tables stroage
     $databaseTablesList = tables;
   });
 
   listen("show-databases-res", ev => {
-    // Show databases from dbs
+    /* Show databases from dbs */
+
+    // Get databases list from JSON object
     const { databases } = JSON.parse(ev.payload as string) as { databases: string[] };
+
+    // Change app state
     $displayingState = "databases_list";
+
+    // Push databases list to database storage
     $dbsDatabasesList = databases;
   });
 
   listen("connected-to-database", async ev => {
-    // Change database to which user is connected and display database tables
-    $connectedToDatabaseName = ev.payload as string; // under payload is database name in raw string format
-    $selectedTableName = undefined; // unsellect from displaying table/s from another database
-    await emit("show-tables"); // request for new connected database-name tables
+    /* When user has been connected to another database */
+
+    // under payload is database name in raw string format
+    $connectedToDatabaseName = ev.payload as string;
+
+    // delete selected table from previous database (regardless whether it has been prior selected or not)
+    $selectedTableContent = undefined;
+
+    // request for new connected database-name tables
+    await emit("show-tables");
   });
 
-  listen("table-content", ev => {
-    // Get content of table
-    function parsePayload(payload: string): TableSchema {
-      return JSON.parse(JSON.parse(payload).table as string)
-    }
-
-    const table: TableSchema = parsePayload(ev.payload as string);
+  listen("table-content", ev => {    
+    // Get content of selected table
+    const table: TableSchema = JSON.parse(JSON.parse(ev.payload as string).table as string);
+    
+    // Push selected table content to storage
     $selectedTableContent = table;
   });
 
   listen("error", ev => {
+    /* Display error notification */
     const reason = ev.payload as string;
     $notification = [true, reason || "Error detected", false];
   });
@@ -66,7 +79,7 @@
 
 {#if $notification[0]}
   <div class="notification" in:fly={{ duration: 200, x: 300 }} out:scale={{ duration: 200 }}>
-    <ToastNotification id="app-notification-toast" lowContrast={true} timeout={10_000} title={$notification[2] ? "Success" : "Error"} caption={new Date().toLocaleTimeString("pl-PL")} subtitle={notificationContent()} kind={$notification[2] ? "success" : "error"} on:close={ev => {$notification[0] = false; ($notification[2] ? $notification[2] = false : null)}}/>
+    <ToastNotification id="app-notification-toast" lowContrast={true} timeout={10_000} title={$notification[2] ? "Success" : "Error"} caption={new Date().toLocaleTimeString("pl-PL")} subtitle={$notification[1] ? $notification[1] : "Incorrect login data try again..."} kind={$notification[2] ? "success" : "error"} on:close={ev => {$notification[0] = false; ($notification[2] ? $notification[2] = false : null)}}/>
   </div>
 {/if}
 

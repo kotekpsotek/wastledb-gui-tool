@@ -1,20 +1,7 @@
 import { readTextFile, writeFile, readDir, createDir, exists } from "@tauri-apps/api/fs";
-// import { BaseDirectory } from "@tauri-apps/api/path"
 import { v4 } from "uuid";
 import { connectionsStore } from "./storages";
-
-export interface connectionOne {
-    id: string,
-    connectionUrl: string,
-    userName: string,
-    dateTimestamp: number,
-    databaseName?: string,
-    rsaPublicKey?: string
-}
-
-export interface connectionsList {
-    connections: connectionOne[]
-}
+import type { connectionsList } from "./utilTypes";
 
 export default class connectionListOpeartions {
     static fileName = "recentConnectionsList.json";

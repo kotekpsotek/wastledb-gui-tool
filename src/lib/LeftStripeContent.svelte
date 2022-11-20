@@ -3,37 +3,40 @@
     import { connectionsStore } from "./ts/storages";
     import { onMount, afterUpdate } from "svelte";
     import { emit } from "@tauri-apps/api/event";
-    import { displayingState, connectedToDatabaseName, databaseTablesList, selectedTableName, dbsDatabasesList } from "./ts/storages";
-
+    import { displayingState, connectedToDatabaseName, databaseTablesList, dbsDatabasesList } from "./ts/storages";
+    // Determine dynamically height for list contents for Stripe
     let heigthLs3 = 0;
     
+    // After module load
     onMount(async () => {
       const titleLs = document.querySelector(".left-stripe > .title").clientHeight;
       const tablesLsTitle = document.querySelector(".left-stripe > .tables-title").clientHeight;
       heigthLs3 = document.body.clientHeight - (titleLs + tablesLsTitle);
     });
 
-    async function userChooseTable(ev: Event) {
-      // Show selected table content
-      // TODO: emit event to backend in order to advance table content or !error
-      const clickedTableName = (ev.currentTarget as HTMLElement).querySelector(".table-name p").textContent.trim();
-      $selectedTableName = clickedTableName
-
-      // Download table content
-      await emit("get-table-content", clickedTableName);
-    }
-
-    async function userChooseDatabase(ev: Event) {
-      const databaseName = (ev.currentTarget as HTMLElement).querySelector(".database-name p").textContent;
-      await emit("connect-to-database", databaseName);
-    }
-
+    // After module GUI content updation
     afterUpdate(() => {
       // After click on database name show all databases names "go back to it" - because point from which it is emitted is further
       document.getElementById("choosed-database-name")?.addEventListener("click", async ev => {
         await emit("show-databases");
       });
     });
+
+    async function userChooseTable(ev: Event) {
+      /* Show selected table content */
+      const clickedTableName = (ev.currentTarget as HTMLElement).querySelector(".table-name p").textContent.trim();
+
+      // Download table content
+      await emit("get-table-content", clickedTableName);
+    }
+
+    async function userChooseDatabase(ev: Event) {
+      /* Connect user to another database */
+      const databaseName = (ev.currentTarget as HTMLElement).querySelector(".database-name p").textContent;
+
+      // Connect to another
+      await emit("connect-to-database", databaseName);
+    }
 </script>
 
 <div class="title">

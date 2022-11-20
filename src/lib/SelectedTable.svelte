@@ -1,14 +1,14 @@
 <script lang="ts">
-    import { selectedTableName } from "./ts/storages";
+    import { selectedTableContent } from "./ts/storages";
     import { Sql } from "carbon-icons-svelte";
     import { TextInput, Button } from "carbon-components-svelte";
 </script>
 
-{#if $selectedTableName}
+{#if $selectedTableContent}
     <div class="selected-table">
         <div class="title-sql-execution">
             <div class="title">
-                <p>{$selectedTableName}</p>
+                <p>{$selectedTableContent.name}</p>
             </div>
             <div class="sql-linter">
                 <Button id="sql-execute-button" size="small" kind="tertiary">
