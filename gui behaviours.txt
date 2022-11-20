@@ -23,6 +23,10 @@ Establish connection panel:
             Recived params:
                 database_name - name of database to which user has been connected in raw String format
 
+        "table-content" - recive table content
+            Recived params:
+                table_contend - under form String which contains not parsed JSON object with table columns and data for rows
+
     Event emitters:
         "establish-connections" - emitted after click on "Connect" button in aim to establish connection between client and dbs,
             Sended params:
@@ -43,6 +47,10 @@ Establish connection panel:
         "connect-to-database" - Use it to change database to which user is connected. Try connect user to specific database name. When user is connected then "connected-to-database" listener going to have response. When something wents wrong then "error" listner will be emitted
             Sended params:
                 database_name - as string type
+        
+        "get-table-content" - obtain content such as table rows, columns and metadata stored for each column.
+            Sended params:
+                table_name - name of table from database to which user is connected
 
     Requirements:
         Connection URL shema:

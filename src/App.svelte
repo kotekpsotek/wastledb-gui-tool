@@ -5,11 +5,12 @@
   import { fly, scale } from "svelte/transition";
   import { emit, listen } from "@tauri-apps/api/event";
   import ConnectionsList from "./lib/ts/connectionsList";
-  import { connectionsStore, displayingState, notificationStateStore as notification, databaseTablesList, dbsDatabasesList, connectedToDatabaseName, selectedTableName } from "./lib/ts/storages";
+  import { connectionsStore, displayingState, notificationStateStore as notification, databaseTablesList, dbsDatabasesList, connectedToDatabaseName, selectedTableName, selectedTableContent } from "./lib/ts/storages";
   import LeftStripeContent from "./lib/LeftStripeContent.svelte";
   import EstablishConnection from "./lib/EstablishConnection.svelte";
   import SelectedTable from "./lib/SelectedTable.svelte";
   import NoSelectedDatabase from "./lib/noSelectedDatabase.svelte";
+  import type { Table as TableSchema } from "./lib/ts/utilTypes";
 
   // When program has been loaded
   onMount(async () => {
@@ -45,6 +46,16 @@
     $connectedToDatabaseName = ev.payload as string; // under payload is database name in raw string format
     $selectedTableName = undefined; // unsellect from displaying table/s from another database
     await emit("show-tables"); // request for new connected database-name tables
+  });
+
+  listen("table-content", ev => {
+    // Get content of table
+    function parsePayload(payload: string): TableSchema {
+      return JSON.parse(JSON.parse(payload).table as string)
+    }
+
+    const table: TableSchema = parsePayload(ev.payload as string);
+    $selectedTableContent = table;
   });
 
   listen("error", ev => {

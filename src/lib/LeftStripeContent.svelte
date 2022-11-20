@@ -13,11 +13,14 @@
       heigthLs3 = document.body.clientHeight - (titleLs + tablesLsTitle);
     });
 
-    function userChooseTable(ev: Event) {
+    async function userChooseTable(ev: Event) {
       // Show selected table content
       // TODO: emit event to backend in order to advance table content or !error
       const clickedTableName = (ev.currentTarget as HTMLElement).querySelector(".table-name p").textContent.trim();
       $selectedTableName = clickedTableName
+
+      // Download table content
+      await emit("get-table-content", clickedTableName);
     }
 
     async function userChooseDatabase(ev: Event) {
