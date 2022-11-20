@@ -6,7 +6,7 @@
 mod payloads;
 
 use tauri::Manager;
-use payloads::EstablishConnection;
+use payloads::{EstablishConnection, ExecuteSqlQuery};
 use serde_json::{ self, json };
 use std::{
     sync::{Arc, Mutex},
@@ -365,7 +365,72 @@ fn event_listeners(app: &mut tauri::App) {
                             app_handler.emit_all("error", error_mes).expect("Couldn't emit event");
                         }
                     },
-                    Err(_) => app_handler.emit_all("error", "Couldn't read response from server server").expect("Couldn't emit event")
+                    Err(_) => app_handler.emit_all("error", "Couldn't read response from server").expect("Couldn't emit event")
+                }
+            }
+        }
+    });
+
+    // Execute sql query
+    app.listen_global("execute-sql-query", {
+        let app_handler = app_handler.clone();
+        let session_id_storage = session_id_storage.clone();
+        let server_url_storage = server_url.clone();
+
+        move |event| {
+            let query_to_exe_str = event.payload().unwrap().replace("\"{", "{").replace("}\"", "}").replace("\\", "");
+
+            if query_to_exe_str.len() > 0 {
+                let query_to_exe_des = serde_json::from_str::<ExecuteSqlQuery>(&query_to_exe_str).unwrap();
+                let session_id = session_id_storage
+                    .lock()
+                    .unwrap()
+                    .to_owned();
+
+                // SQL Query Example: UPDATE mycat2 SET name = 'hex', age = 255
+                let command = format!("Command;sql_query|x=x|{qu} 1-1 session_id|x=x|{sid}", sid = session_id, qu = query_to_exe_des.query);
+
+                // Connection
+                let mut tcp = TcpStream::connect(server_url_storage.lock().unwrap().to_owned()).expect("Couldn't establish connection with dbs"); 
+                    
+                    // ...Request
+                tcp.write(command.as_bytes()).expect("Couldn't send request");
+
+                    // ...Response
+                let response_bytes: &mut [u8; 1024 * 16] = &mut [0; 16384];
+
+                match tcp.read(response_bytes) {
+                    Ok(_) => {
+                        let response_string = String::from_utf8(response_bytes.to_vec()).expect("Couldn't convert response to UTF-8 string").replace("\0", "");
+                        let resp_s = response_string.split(";").collect::<Vec<_>>(); // When "OK" then 2 key isn't presented, When "Err" second key can be Reason but also cannot exists
+        
+                        if resp_s[0].to_lowercase() == "ok" {
+                            // Re-Send table content to user
+                            let resm = if resp_s.len() > 1 {
+                                resp_s[1]
+                            }
+                            else {
+                                "query_performed"
+                            };
+                            println!("ok");
+                            app_handler.emit_all("execute-sql-query-successoutput", json!({ "result": resm, "execute_on_same_table": query_to_exe_des.execute_on_here })).expect("Couldn't emit event"); // Send to frontend JSON object recived from database with sql query results
+                        }
+                        else {
+                            // Emitt error
+                            let error_mes = {
+                                if resp_s.len() > 1 {
+                                    // Reason from server
+                                    resp_s[1]
+                                }
+                                else {
+                                    // Default reason
+                                    "Couldn't execute query content"
+                                }
+                            };
+                            app_handler.emit_all("error", error_mes).expect("Couldn't emit event");
+                        }
+                    },
+                    Err(_) => app_handler.emit_all("error", "Couldn't read response from server").expect("Couldn't emit event")
                 }
             }
         }

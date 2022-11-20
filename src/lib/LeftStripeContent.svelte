@@ -6,12 +6,16 @@
     import { displayingState, connectedToDatabaseName, databaseTablesList, dbsDatabasesList } from "./ts/storages";
     // Determine dynamically height for list contents for Stripe
     let heigthLs3 = 0;
-    
-    // After module load
-    onMount(async () => {
+    const calculateHeightLs3 = () => {
       const titleLs = document.querySelector(".left-stripe > .title").clientHeight;
       const tablesLsTitle = document.querySelector(".left-stripe > .tables-title").clientHeight;
       heigthLs3 = document.body.clientHeight - (titleLs + tablesLsTitle);
+    };
+    
+    // After module load
+    onMount(async () => {
+      // Change height content on page left stripe
+      calculateHeightLs3();
     });
 
     // After module GUI content updation
@@ -20,6 +24,12 @@
       document.getElementById("choosed-database-name")?.addEventListener("click", async ev => {
         await emit("show-databases");
       });
+    });
+
+    // When window size has been changed
+    window.addEventListener("resize", ev => {
+      // Change height content on page left stripe
+      calculateHeightLs3();
     });
 
     async function userChooseTable(ev: Event) {
@@ -170,6 +180,7 @@
       display: flex;
       flex-direction: column;
       overflow-y: auto;
+      overflow-x: hidden;
     }
 
     .connection-outcome, .table-outcome {

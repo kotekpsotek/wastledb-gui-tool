@@ -1,7 +1,8 @@
 <script lang="ts">
-    import { selectedTableContent } from "./ts/storages";
+    import { selectedTableContent, notificationStateStore } from "./ts/storages";
     import { Sql } from "carbon-icons-svelte";
     import { TextInput, Button } from "carbon-components-svelte";
+    import { emit, listen } from "@tauri-apps/api/event";
 
     // Allow to highlight number cell data
     const nullHiglight = (value: any) => value == null ? true : false;
@@ -10,6 +11,48 @@
         const foundCoulmnType = $selectedTableContent.columns.find(val => (val.name == column_name) ? true : false).d_type;
         return ["TEXT", "LONGTEXT"].includes(foundCoulmnType as string) || (typeof foundCoulmnType == "object" && Object.keys(foundCoulmnType).includes("VARCHAR")) ? true : false;
     }
+
+    // Value from input
+    let inputContent: string;
+
+    // Assign value to variable "inputContent"
+    function assignValueFromInput(ev: CustomEvent) {
+        inputContent = ev.detail as string;
+    }
+
+    // Execute SQL query
+    async function executeSQLQueryOnTable(ev: Event) {
+        // Replace 'here' to actual selecte table content
+        const hereStatementToAcutualDatabaseName = inputContent.includes("here") ? inputContent.replace("here", $selectedTableContent.name) : inputContent;
+
+        // Emit event to backend in order to execute query
+        await emit("execute-sql-query", JSON.stringify({ query: hereStatementToAcutualDatabaseName, execute_on_here: inputContent.includes("here") }))
+    }
+
+    listen("execute-sql-query-successoutput", async ev => {
+        /* Recive SQL query result when Query has been successfull executed (performed only in that situation) */
+        const { result, execute_on_same_table }: { result: string, execute_on_same_table: boolean } = ev.payload as any; // { result: "executed_query_result", execute_on_same_table: boolean }
+
+        // Display notification
+        // Show performed 
+        if (result != "query_performed") {
+            // Display result of executed query
+            $notificationStateStore[0] = true;
+            $notificationStateStore[1] = result;
+            $notificationStateStore[2] = true;
+        }
+        else {
+            // When database doesn't attach query execution result display basic information about that
+            $notificationStateStore[0] = true;
+            $notificationStateStore[1] = "Query has been executed!";
+            $notificationStateStore[2] = true;
+        }
+
+        // When query has been executed on same table then reload it
+        if (execute_on_same_table) {
+            await emit("get-table-content", $selectedTableContent.name);
+        }
+    });
 </script>
 
 {#if $selectedTableContent}
@@ -19,10 +62,10 @@
                 <p>{$selectedTableContent.name}</p>
             </div>
             <div class="sql-linter">
-                <Button id="sql-execute-button" size="small" kind="tertiary">
+                <Button id="sql-execute-button" size="small" kind="tertiary" on:click={executeSQLQueryOnTable}>
                     <Sql size={16}/>
                 </Button>
-                <TextInput id="sql-input-linter" placeholder="Enter SQL Query to execute it..."/>
+                <TextInput id="sql-input-linter" placeholder="Enter SQL Query to execute it..." on:input={assignValueFromInput}/>
             </div>
         </div>
         <div class="src">
@@ -48,7 +91,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {#if $selectedTableContent.rows}
+                    {#if $selectedTableContent.rows?.length}
                         {#each $selectedTableContent.rows as row}
                             <tr>
                                 {#each row as { value, col: column_name }}

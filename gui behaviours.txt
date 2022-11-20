@@ -27,6 +27,10 @@ Establish connection panel:
             Recived params:
                 table_contend - under form String which contains not parsed JSON object with table columns and data for rows
 
+        "execute-sql-query-successoutput" - listen successfull executed SQL query info and recive outcomes
+            Recived params:
+                { result: unsder it is result of executed query or string "query_performed" when query has been perfromed but result wasn't attached to response, execute_on_same_table: whether query was executed on same table (boolean) (required to reload table displaying table content) }
+
     Event emitters:
         "establish-connections" - emitted after click on "Connect" button in aim to establish connection between client and dbs,
             Sended params:
@@ -51,6 +55,10 @@ Establish connection panel:
         "get-table-content" - obtain content such as table rows, columns and metadata stored for each column.
             Sended params:
                 table_name - name of table from database to which user is connected
+
+        "execute-sql-query" - execute sql query.
+            Sended params:
+                { query: "query which should be executed", execute_on_here: whether query is executed on displaying table }
 
     Requirements:
         Connection URL shema:

@@ -17,3 +17,9 @@ pub struct EstablishConnection {
     #[serde(rename = "rsapublicKey", default)]
     pub rsapublic_key: Option<String>
 }
+
+#[derive(Debug, Deserialize)]
+pub struct ExecuteSqlQuery {
+    pub query: String,
+    pub execute_on_here: bool
+}
