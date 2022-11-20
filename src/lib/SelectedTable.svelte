@@ -2,6 +2,14 @@
     import { selectedTableContent } from "./ts/storages";
     import { Sql } from "carbon-icons-svelte";
     import { TextInput, Button } from "carbon-components-svelte";
+
+    // Allow to highlight number cell data
+    const nullHiglight = (value: any) => value == null ? true : false;
+    const numberLinting = (column_name: string) => ["INT", "FLOAT"].includes($selectedTableContent.columns.find(val => (val.name == column_name) ? true : false).d_type as string);
+    const stringTypeHiglight = (column_name: any) => {
+        const foundCoulmnType = $selectedTableContent.columns.find(val => (val.name == column_name) ? true : false).d_type;
+        return ["TEXT", "LONGTEXT"].includes(foundCoulmnType as string) || (typeof foundCoulmnType == "object" && Object.keys(foundCoulmnType).includes("VARCHAR")) ? true : false;
+    }
 </script>
 
 {#if $selectedTableContent}
@@ -19,71 +27,56 @@
         </div>
         <div class="src">
             <table class="content">
-                <tr>
-                    <th>Column name 1</th>
-                    <th>Column name 2</th>
-                    <th>Column name 3</th>
-                </tr>
-                <tr>
-                    <td>row value</td>
-                    <td>row value</td>
-                    <td>row value</td>
-                </tr>
-                <tr>
-                    <td>row value</td>
-                    <td>row value</td>
-                    <td>row value</td>
-                </tr>
-                <tr>
-                    <td>row value</td>
-                    <td>row value</td>
-                    <td>row value</td>
-                </tr>
-                <tr>
-                    <td>row value</td>
-                    <td>row value</td>
-                    <td>row value</td>
-                </tr>
-                <tr>
-                    <td>row value</td>
-                    <td>row value</td>
-                    <td>row value</td>
-                </tr>
-                <tr>
-                    <td>row value</td>
-                    <td>row value</td>
-                    <td>row value</td>
-                </tr>
-                <tr>
-                    <td>row value</td>
-                    <td>row value</td>
-                    <td>row value</td>
-                </tr>
-                <tr>
-                    <td>row value</td>
-                    <td>row value</td>
-                    <td>row value</td>
-                </tr>
-                <tr>
-                    <td>row value</td>
-                    <td>row value</td>
-                    <td>row value</td>
-                </tr>
-                <tr>
-                    <td>row value</td>
-                    <td>row value</td>
-                    <td>row value</td>
-                </tr>
-                <tr>
-                    <td>row value</td>
-                    <td>row value</td>
-                    <td>row value</td>
-                </tr>
-                <tr>
-                    <td>row value</td>
-                    <td>row value</td>
-                    <td>row value</td>
-                </tr>
+                <thead>
+                    <tr>
+                        {#each $selectedTableContent.columns as { name, d_type }}
+                            <th>
+                                <p class="table-name">{name}</p>
+                                <p class="data-type">
+                                    {#if typeof d_type == "object" && !(d_type instanceof Array)}
+                                        <!-- Support for types with defined properties (these data-types must be object types) -->
+                                        {#if Object.keys(d_type).includes("VARCHAR")}
+                                            <!-- Support for "Varchar" type -->
+                                            varchar(<span class="number-into-type" title="{d_type["VARCHAR"] ? String(d_type["VARCHAR"]) : String(65535)}">{d_type["VARCHAR"] || "max"}</span>)
+                                        {/if}
+                                    {:else}
+                                        {d_type}
+                                    {/if}
+                                </p>
+                            </th>
+                        {/each}
+                    </tr>
+                </thead>
+                <tbody>
+                    {#if $selectedTableContent.rows}
+                        {#each $selectedTableContent.rows as row}
+                            <tr>
+                                {#each row as { value, col: column_name }}
+                                    {#if nullHiglight(value)}
+                                        <!-- Higlight null value -->
+                                        <td class="null">{value}</td>
+                                    {:else}
+                                        {#if numberLinting(column_name)}
+                                            <!-- Higlight number value -->
+                                            <td class="number">{value}</td>
+                                        {:else if stringTypeHiglight(column_name)}
+                                            <td class="string">{value}</td>
+                                        {:else}
+                                            <td>{value}</td>
+                                        {/if}
+                                    {/if}
+                                {/each}
+                            </tr>
+                        {/each}
+                    {:else}
+                        <!-- When table is without records -->
+                        <tr class="table-without-content">
+                            {#each $selectedTableContent.columns as _}
+                                <td></td>
+                            {/each}
+                        </tr>
+                    {/if}
+                </tbody>
             </table>
         </div>
     </div>
@@ -138,21 +131,54 @@
         border-radius: 2px;
     }
 
-    table.content > tr td {
-        border-right: 1px solid black;
-    }
-
-    table.content > tr td:last-of-type {
-        border-right: none;
-    }
-
-    table.content th {
+    table.content thead th {
         padding: 10px;
+        padding-bottom: 3px;
+        padding-top: 3px;
+    }
+
+    table.content th .table-name {
         font-size: 17px;
         color: white;
+    }
+
+    /* Higlight column data-type  */
+    table.content th .data-type {
+        color: var(--orange-hue);
+    }
+
+    /* Higlight column data type property when it exists */
+    table.content th .data-type span.number-into-type {
+        cursor: pointer;
+        color: greenyellow;
     }
     
     table.content td {
         padding: 5px;
+    }
+
+    table.content tbody tr td {
+        border-right: 1px solid black;
+    }
+
+    table.content tbody tr.table-without-content td {
+        border-right: none !important;
+    }
+
+    table.content tbody tr td:last-of-type {
+        border-right: none;
+    }
+
+    /* Linting for specific data type */
+    .number {
+        color: greenyellow;
+    }
+
+    .null {
+        color: blue;
+    }
+
+    .string {
+        color: orangered;
     }
 </style>

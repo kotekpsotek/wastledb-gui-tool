@@ -1,8 +1,10 @@
+/* Supported datatypes span for all table columns */
+type ColumnDType = { VARCHAR: Number | null } | "INT" | "FLOAT" | "TEXT" | "LONGTEXT" | "DATE" | "DATETIMESTAMP" | "NULL" | "BOOLEAN";
 /* Table from database shema */
 export interface Table {
     name: string,
-    columns: Array<{ constraints: string[], d_type: any, name: string }>,
-    rows: Array<{ col: string, value: string }>
+    columns: Array<{ constraints: string[], d_type: ColumnDType, name: string }>,
+    rows: Array<Array<{ col: string, value: string }>> | null // null - when table doesn't have records
 }
 
 /* Types determining what can be displaying in APP */
