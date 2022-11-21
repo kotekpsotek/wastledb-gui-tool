@@ -91,7 +91,7 @@ fn event_listeners(app: &mut tauri::App) {
         let session_id_storage = Arc::clone(&session_id_storage);
         let server_url_storage = server_url.clone();
         move |event| {
-            let EstablishConnection { server_url, user_name, user_password, db_name, create_encrypted_connection, rsapublic_key } = serde_json::from_str::<EstablishConnection>(event.payload().unwrap()).expect("Couldn't deserialize message");
+            let EstablishConnection { server_url, user_name, user_password, db_name, create_encrypted_connection: _, rsapublic_key: _ } = serde_json::from_str::<EstablishConnection>(event.payload().unwrap()).expect("Couldn't deserialize message");
 
             if server_url.len() > 0 && user_name.len() > 0 && user_password.len() > 0 {
                 let url_correcteness = || {
@@ -189,39 +189,47 @@ fn event_listeners(app: &mut tauri::App) {
         }
     });
 
-    // TODO: Renundant code below (Simplify that to one function)
+    // Handle and parse request to DBS
+    fn handle_dbs_request(command: String, server_url: String) -> Result<Vec<String>, ()> {
+        // Connection
+        let mut tcp = TcpStream::connect(server_url).expect("Couldn't establish connection with dbs"); 
+            // ...Request
+        tcp.write(command.as_bytes()).expect("Couldn't send request");
+            // ...Response
+                // Write response to buffer
+        let response_buffer: &mut [u8; 1024 * 16] = &mut [0; 16384];
+        tcp.read(response_buffer).map_err(|_| ())?;
+            // Convert response to string
+        let response_string = String::from_utf8(response_buffer.to_vec()).expect("Couldn't convert response to UTF-8 string").replace("\0", "");
+        
+            // ... Return result as slices i.e: OK;response_payload -> ["OK", "response_payload"]
+        Ok(response_string.split(";")
+            .into_iter()
+            .map(|v| v.to_string())
+            .collect::<Vec<_>>())
+    }
+
     // Listen to show user tables list
     app.listen_global("show-tables", {
         let app_handler = app_handler.clone();
         let session_id_storage = session_id_storage.clone();
         let server_url_storage = server_url.clone();
         move |_| {
-            let session_id = session_id_storage
-                .lock()
-                .unwrap()
-                .to_owned();
-
-            let command = format!("Show;what|x=x|database_tables 1-1 unit_name|x=x|none 1-1 session_id|x=x|{}", session_id);
-
-            // Connection
-            let mut tcp = TcpStream::connect(server_url_storage.lock().unwrap().to_owned()).expect("Couldn't establish connection with dbs"); 
-                // ...Request
-            tcp.write(command.as_bytes()).expect("Couldn't send request");
-                // ...Response
-            let response_bytes: &mut [u8; 1024 * 16] = &mut [0; 16384];
-            tcp.read(response_bytes).expect("Couldn't read response");
-            let response_string = String::from_utf8(response_bytes.to_vec()).expect("Couldn't convert response to UTF-8 string").replace("\0", "");
-            let resp_s = response_string.split(";").collect::<Vec<_>>();
-
-            // Rebound to frontend
-            if resp_s[0].to_lowercase() == "ok" {
-                // Send tables to frontend
-                app_handler.emit_all("show-tables-res", resp_s[1]).expect("Couldn't emit event"); // Send to frontend JSON object recived from database
-            }
-            else {
-                // Emitt that error
-                app_handler.emit_all("error", "Couldn't achive tables list from dbs").expect("Couldn't emit event");
-            }
+            // Handle request and get response
+            match handle_dbs_request(format!("Show;what|x=x|database_tables 1-1 unit_name|x=x|none 1-1 session_id|x=x|{}", session_id_storage.lock().unwrap().to_owned()), server_url_storage.lock().unwrap().to_owned()) {
+                Ok(resp_s) => {
+                    // Rebound to frontend
+                    if resp_s[0].to_lowercase() == "ok" {
+                        // Send tables to frontend
+                        app_handler.emit_all("show-tables-res", resp_s[1].as_str()).expect("Couldn't emit event"); // Send to frontend JSON object recived from database
+                    }
+                    else {
+                        // Emitt that error
+                        app_handler.emit_all("error", "Couldn't achive tables list from dbs").expect("Couldn't emit event");
+                    }
+                },
+                Err(_) => app_handler.emit_all("error", "Couldn't read response from server").expect("Couldn't emit event")
+            };
         }
     });
 
@@ -232,32 +240,21 @@ fn event_listeners(app: &mut tauri::App) {
         let server_url_storage = server_url.clone();
     
         move |_| {
-            let session_id = session_id_storage
-                .lock()
-                .unwrap()
-                .to_owned();
-
-            let command = format!("Show;what|x=x|databases 1-1 unit_name|x=x|none 1-1 session_id|x=x|{}", session_id);
-
-            // Connection
-            let mut tcp = TcpStream::connect(server_url_storage.lock().unwrap().to_owned()).expect("Couldn't establish connection with dbs"); 
-                // ...Request
-            tcp.write(command.as_bytes()).expect("Couldn't send request");
-                // ...Response
-            let response_bytes: &mut [u8; 1024 * 16] = &mut [0; 16384];
-            tcp.read(response_bytes).expect("Couldn't read response");
-            let response_string = String::from_utf8(response_bytes.to_vec()).expect("Couldn't convert response to UTF-8 string").replace("\0", "");
-            let resp_s = response_string.split(";").collect::<Vec<_>>();
-
-            // Rebound to frontend
-            if resp_s[0].to_lowercase() == "ok" {
-                // Send databases to frontend
-                app_handler.emit_all("show-databases-res", resp_s[1]).expect("Couldn't emit event"); // Send to frontend JSON object recived from database
-            }
-            else {
-                // Emitt that error
-                app_handler.emit_all("error", "Couldn't achive list of databases from dbs").expect("Couldn't emit event");
-            }
+            // Handle request and get response
+            match handle_dbs_request(format!("Show;what|x=x|databases 1-1 unit_name|x=x|none 1-1 session_id|x=x|{}", session_id_storage.lock().unwrap().to_owned()), server_url_storage.lock().unwrap().to_owned()) {
+                Ok(resp_s) => {
+                    // Rebound to frontend
+                    if resp_s[0].to_lowercase() == "ok" {
+                        // Send databases to frontend
+                        app_handler.emit_all("show-databases-res", resp_s[1].as_str()).expect("Couldn't emit event"); // Send to frontend JSON object recived from database
+                    }
+                    else {
+                        // Emitt that error
+                        app_handler.emit_all("error", "Couldn't achive list of databases from dbs").expect("Couldn't emit event");
+                    }
+                },
+                Err(_) => app_handler.emit_all("error", "Couldn't read response from server").expect("Couldn't emit event")
+            };
         }
     });
 
@@ -271,25 +268,9 @@ fn event_listeners(app: &mut tauri::App) {
             let database_name = event.payload().unwrap().replace("\"", "");
 
             if database_name.len() > 0 {
-                let session_id = session_id_storage
-                    .lock()
-                    .unwrap()
-                    .to_owned();
-
-                let command = format!("DatabaseConnect;database_name|x=x|{} 1-1 session_id|x=x|{}", database_name, session_id);
-
-                // Connection
-                let mut tcp = TcpStream::connect(server_url_storage.lock().unwrap().to_owned()).expect("Couldn't establish connection with dbs"); 
-                    // ...Request
-                tcp.write(command.as_bytes()).expect("Couldn't send request");
-                    // ...Response
-                let response_bytes: &mut [u8; 1024 * 16] = &mut [0; 16384];
-                
-                match tcp.read(response_bytes) {
-                    Ok(_) => {
-                        let response_string = String::from_utf8(response_bytes.to_vec()).expect("Couldn't convert response to UTF-8 string").replace("\0", "");
-                        let resp_s = response_string.split(";").collect::<Vec<_>>(); // When "OK" then 2 key isn't presented, When "Err" second key can be Reason but also cannot exists
-        
+                // Handle request and get response
+                match handle_dbs_request(format!("DatabaseConnect;database_name|x=x|{} 1-1 session_id|x=x|{}", database_name, session_id_storage.lock().unwrap().to_owned()), server_url_storage.lock().unwrap().to_owned()) {
+                    Ok(resp_s) => {
                         if resp_s[0].to_lowercase() == "ok" {
                             // Send that user is connected with database
                             app_handler.emit_all::<String>("connected-to-database", database_name).expect("Couldn't emit event"); // Send to frontend JSON object recived from database
@@ -299,7 +280,7 @@ fn event_listeners(app: &mut tauri::App) {
                             let error_mes = {
                                 if resp_s.len() > 1 {
                                     // Reason from server
-                                    resp_s[1]
+                                    resp_s[1].as_str()
                                 }
                                 else {
                                     // Default reason
@@ -310,7 +291,7 @@ fn event_listeners(app: &mut tauri::App) {
                         }
                     },
                     Err(_) => app_handler.emit_all("error", "Couldn't read response from server").expect("Couldn't emit event")
-                }
+                };
             }
         }
     });
@@ -325,37 +306,18 @@ fn event_listeners(app: &mut tauri::App) {
             let table_name = event.payload().unwrap().replace("\"", "");
 
             if table_name.len() > 0 {
-                let session_id = session_id_storage
-                    .lock()
-                    .unwrap()
-                    .to_owned();
-
-                let command = format!("Show;what|x=x|table_records 1-1 unit_name|x=x|{} 1-1 session_id|x=x|{}", table_name, session_id);
-
-                // Connection
-                let mut tcp = TcpStream::connect(server_url_storage.lock().unwrap().to_owned()).expect("Couldn't establish connection with dbs"); 
-                    
-                    // ...Request
-                tcp.write(command.as_bytes()).expect("Couldn't send request");
-
-                    // ...Response
-                let response_bytes: &mut [u8; 1024 * 16] = &mut [0; 16384];
-                
-                match tcp.read(response_bytes) {
-                    Ok(_) => {
-                        let response_string = String::from_utf8(response_bytes.to_vec()).expect("Couldn't convert response to UTF-8 string").replace("\0", "");
-                        let resp_s = response_string.split(";").collect::<Vec<_>>(); // When "OK" then 2 key isn't presented, When "Err" second key can be Reason but also cannot exists
-        
+                match handle_dbs_request(format!("Show;what|x=x|table_records 1-1 unit_name|x=x|{} 1-1 session_id|x=x|{}", table_name, session_id_storage.lock().unwrap().to_owned()), server_url_storage.lock().unwrap().to_owned()) { 
+                    Ok(resp_s) => {
                         if resp_s[0].to_lowercase() == "ok" {
                             // Re-Send table content to user
-                            app_handler.emit_all("table-content", resp_s[1]).expect("Couldn't emit event"); // Send to frontend JSON object recived from database
+                            app_handler.emit_all("table-content", resp_s[1].as_str()).expect("Couldn't emit event"); // Send to frontend JSON object recived from database
                         }
                         else {
                             // Emitt error
                             let error_mes = {
                                 if resp_s.len() > 1 {
                                     // Reason from server
-                                    resp_s[1]
+                                    resp_s[1].as_str()
                                 }
                                 else {
                                     // Default reason
@@ -381,38 +343,20 @@ fn event_listeners(app: &mut tauri::App) {
             let query_to_exe_str = event.payload().unwrap().replace("\"{", "{").replace("}\"", "}").replace("\\", "");
 
             if query_to_exe_str.len() > 0 {
+                // Prepare SQL query to send it to dbs
                 let query_to_exe_des = serde_json::from_str::<ExecuteSqlQuery>(&query_to_exe_str).unwrap();
-                let session_id = session_id_storage
-                    .lock()
-                    .unwrap()
-                    .to_owned();
 
                 // SQL Query Example: UPDATE mycat2 SET name = 'hex', age = 255
-                let command = format!("Command;sql_query|x=x|{qu} 1-1 session_id|x=x|{sid}", sid = session_id, qu = query_to_exe_des.query);
-
-                // Connection
-                let mut tcp = TcpStream::connect(server_url_storage.lock().unwrap().to_owned()).expect("Couldn't establish connection with dbs"); 
-                    
-                    // ...Request
-                tcp.write(command.as_bytes()).expect("Couldn't send request");
-
-                    // ...Response
-                let response_bytes: &mut [u8; 1024 * 16] = &mut [0; 16384];
-
-                match tcp.read(response_bytes) {
-                    Ok(_) => {
-                        let response_string = String::from_utf8(response_bytes.to_vec()).expect("Couldn't convert response to UTF-8 string").replace("\0", "");
-                        let resp_s = response_string.split(";").collect::<Vec<_>>(); // When "OK" then 2 key isn't presented, When "Err" second key can be Reason but also cannot exists
-        
+                match handle_dbs_request(format!("Command;sql_query|x=x|{qu} 1-1 session_id|x=x|{sid}", sid = session_id_storage.lock().unwrap().to_owned(), qu = query_to_exe_des.query), server_url_storage.lock().unwrap().to_owned()) {
+                    Ok(resp_s) => {
                         if resp_s[0].to_lowercase() == "ok" {
                             // Re-Send table content to user
                             let resm = if resp_s.len() > 1 {
-                                resp_s[1]
+                                resp_s[1].as_str()
                             }
                             else {
                                 "query_performed"
                             };
-                            println!("ok");
                             app_handler.emit_all("execute-sql-query-successoutput", json!({ "result": resm, "execute_on_same_table": query_to_exe_des.execute_on_here })).expect("Couldn't emit event"); // Send to frontend JSON object recived from database with sql query results
                         }
                         else {
@@ -420,7 +364,7 @@ fn event_listeners(app: &mut tauri::App) {
                             let error_mes = {
                                 if resp_s.len() > 1 {
                                     // Reason from server
-                                    resp_s[1]
+                                    resp_s[1].as_str()
                                 }
                                 else {
                                     // Default reason
