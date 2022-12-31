@@ -1,7 +1,5 @@
-# Tauri + Svelte + Typescript
+# What it is?
+This is tool to visualize data collected into **WastleDB** database
 
-This template should help get you started developing with Tauri, Svelte and TypeScript in Vite.
-
-## Recommended IDE Setup
-
-[VS Code](https://code.visualstudio.com/) + [Svelte](https://marketplace.visualstudio.com/items?itemName=svelte.svelte-vscode) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer).
+# Powered by
+SVELTE + TYPESCRIPT + RUST + TAURI = 💘
